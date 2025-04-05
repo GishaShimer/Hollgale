@@ -8,7 +8,7 @@ using UnityEngine.Rendering.Universal;
 public class CarTrigger : MonoBehaviour
 {
     public Animator anim;
-    public Light2D light1, light2;
+    public Light2D[] lights;
     public Sprite newSprite;
     public SpriteRenderer SpriteRenderer;
     private AudioManager audioManager;
@@ -18,8 +18,11 @@ public class CarTrigger : MonoBehaviour
     private void Start()
     {
         audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
-        light1.enabled = false;
-        light2.enabled = false;
+        foreach(var light in lights)
+        {
+            light.enabled = false;
+        }
+      
     }
 
     void OnTriggerEnter2D(Collider2D other)
@@ -33,9 +36,11 @@ public class CarTrigger : MonoBehaviour
             audioManager.PlaySFX(audioManager.carLightSwitch); // Звук включения фар
             lightsOn = true;
         }
+        foreach (var light in lights)
+        {
+            light.enabled = true;
 
-        light1.enabled = true;
-        light2.enabled = true;
+        }
     }
 
     void OnTriggerExit2D(Collider2D other)

@@ -1,5 +1,6 @@
 using System.Collections;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class TypeWriterEffect : MonoBehaviour
@@ -8,10 +9,13 @@ public class TypeWriterEffect : MonoBehaviour
     private TMP_Text textComponent;
     private string fullText;
     private Coroutine typingCoroutine;
+    public bool isSound = false;
+    AudioManager audioManager;
 
     private void Awake()
     {
         textComponent = GetComponent<TMP_Text>();
+        audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
         fullText = textComponent.text;
         textComponent.text = ""; // Очищаем текст, но НЕ запускаем эффект сразу
     }
@@ -29,10 +33,17 @@ public class TypeWriterEffect : MonoBehaviour
 
     private IEnumerator ShowText()
     {
-        for (int i = 0; i <= fullText.Length; i++)
+        for (int i = 0; i < fullText.Length; i++)
         {
-            textComponent.text = fullText.Substring(0, i);
+            if (fullText[i] != ' ')
+            {
+                if (isSound)
+                    audioManager.PlaySFX(audioManager.typeWriter);
+            }
+
+            textComponent.text = fullText.Substring(0, i + 1);
             yield return new WaitForSeconds(delay);
         }
     }
+
 }

@@ -18,7 +18,7 @@ public class FadeOnTrigger : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (other.gameObject.layer == LayerMask.NameToLayer("Player"))
+        if (IsPlayer(other))
         {
             playerCount++;
             StartCoroutine(FadeToAlpha(0.2f));
@@ -27,7 +27,7 @@ public class FadeOnTrigger : MonoBehaviour
 
     void OnTriggerExit2D(Collider2D other)
     {
-        if (other.gameObject.layer == LayerMask.NameToLayer("Player"))
+        if (IsPlayer(other))
         {
             playerCount--;
 
@@ -52,5 +52,9 @@ public class FadeOnTrigger : MonoBehaviour
 
         newColor.a = targetAlpha;
         spriteRenderer.color = newColor;
+    }
+    private bool IsPlayer(Collider2D other)
+    {
+        return other.gameObject.CompareTag("Player");
     }
 }

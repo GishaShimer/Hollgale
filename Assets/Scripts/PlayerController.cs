@@ -1,74 +1,81 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using static UnityEngine.EventSystems.EventTrigger;
 
-public class Player : MonoBehaviour{
+public class Player : MonoBehaviour
+{
     /////////////////////////////////////////////////////////
-    AudioManager audioManager;
-
+    // Компоненты
     private Rigidbody2D _rb;
     private Animator _anim;
+    private AudioManager audioManager;
+    private LadderMovement ladder;
 
-    [Header("-----------База так звана-----------")]
-    [SerializeField] private GameObject[] _bodyParts;
-    [SerializeField] private BoxCollider2D _groundCheck;
-    [SerializeField] private BoxCollider2D _CeilingCheck;
     [SerializeField] private AudioSource _audioSource;
 
-    [Header("-----------Еффекти-----------")]
-    [SerializeField] private ParticleSystem _runParticles;
-    [SerializeField] private ParticleSystem _jumpParticles;
+    // Основные настройки
+    [Header("-----------База-----------")]
+    [SerializeField] private GameObject[] _bodyParts;
     [SerializeField] private Light2D[] _lights;
 
-    [Header("-----------Фізика і колізії-----------")]
+    // Коллизии и физика
+    [Header("-----------Физика и коллизии-----------")]
+    [SerializeField] private BoxCollider2D _groundCheck;
+    [SerializeField] private BoxCollider2D _CeilingCheck;
     [SerializeField] private Collider2D _idleCollider;
     [SerializeField] private Collider2D _dashCollider;
     [SerializeField] private LayerMask _groundMask;
     [SerializeField] private LayerMask _platformMask;
 
+    // Эффекты
+    [Header("-----------Эффекты-----------")]
+    [SerializeField] private ParticleSystem _runParticles;
+    [SerializeField] private ParticleSystem _jumpParticles;
 
-
-    [Header("-----------Звуки кроків-----------")]
+    // Звуки шагов
+    [Header("-----------Звуки шагов-----------")]
     private Dictionary<int, AudioClip> _stepSoundsByLayer;
     [SerializeField] private LayerMask[] _stepSoundLayers;
     [SerializeField] private AudioClip[] _stepSounds;
 
-   
-/////////////////////////////////////////////////////////
-   
-
-    [Header("-----------Переміщення-----------")]
-    private bool _isMoving = false;
+    // Перемещение
+    [Header("-----------Перемещение-----------")]
     public float MoveSpeed;
+    private bool _isMoving = false;
     private float _horizontalInput;
 
-    [Header("-----------Стрибок-----------")]
+    // Прыжок
+    [Header("-----------Прыжок-----------")]
     public float JumpForce;
-    private bool _grounded;
-    private float _jumpTimeCounter;
     public float JumpTime;
+    private float _jumpTimeCounter;
     private bool _isJumping;
     private bool _wasGrounded = true;
-
-    [Header("-----------Деш-----------")]
-    private bool _canDash = true;
-    private bool _isDashing;
-    public float DashingPower = 12f;
-    public float DashingTime = 0.1f;
-    private float _dashingCooldown = 1f;
-
-    //потім налаштую
-    private bool isFallingSound= false;
-    private float fallTime = 0f; // Время, сколько игрок уже падает
-    private float fallSoundDelay = 0.4f;
-
     private bool _jumpedPlatformUp = false;
 
+    // Дэш
+    [Header("-----------Дэш-----------")]
+    public float DashingPower = 12f;
+    public float DashingTime = 0.1f;
+    private bool _canDash = true;
+    private bool _isDashing;
+    private float _dashingCooldown = 1f;
+
+    // Падение
+    [Header("-----------Падение-----------")]
+    private bool isFallingSound = false;
+    private float fallTime = 0f;
+    private float fallSoundDelay = 0.6f;
+
+    // Общее состояние
+    public bool isEnabled;
+
+    /////////////////////////////////////////////////////////
 
 
-    /////////////////////////////////////////////////////////    
 
     private void Awake()
     {
@@ -76,23 +83,58 @@ public class Player : MonoBehaviour{
         _rb = GetComponent<Rigidbody2D>();
         _anim = GetComponent<Animator>();
         _audioSource = GetComponent<AudioSource>();
-
-    
-
+        ladder = GetComponent<LadderMovement>();
         audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
- 
 
-        _stepSoundsByLayer = new Dictionary<int, AudioClip>();
-        for (int i = 0; i < _stepSoundLayers.Length && i < _stepSounds.Length; i++)
-        {
-            _stepSoundsByLayer[_stepSoundLayers[i].value] = _stepSounds[i];
-        }
+        InitializeStepSounds();
+        _dashCollider.enabled = false;
     }
+
 
     private void Update()
     {
-        if (_isDashing) return;
+        
+        if (_isDashing || !isEnabled) return;
+        Movement();
+        Jump();
+
+        StepSounds();
+        IsFalling();
+        SpeedrunMode();
+        Land();
+
+        _wasGrounded = IsGrounded();
+        if (Input.GetKeyDown(KeyCode.LeftShift) && _canDash && IsGrounded())
+        {
+            _anim.SetTrigger("Dash");
+            StartCoroutine(Dash());
+        }
+        _anim.SetBool("isGrounded", IsGrounded());
+
+    }
+
+
+
+    private void FixedUpdate()
+    {
+        if (_isDashing || !isEnabled) return;
+        _rb.velocity = new Vector2(_horizontalInput * MoveSpeed, _rb.velocity.y);
+   
+            _anim.SetFloat("xVelocity", Mathf.Abs(_rb.velocity.x));
+            _anim.SetFloat("yVelocity", _rb.velocity.y);
+
+
+        if (_CeilingCheck.IsTouchingLayers(_groundMask))
+        {
+   
+            _isJumping = false;
+            _rb.velocity = new Vector2(_rb.velocity.x, 0);
+        }
+    }
+    private void Movement()
+    {
         _horizontalInput = Input.GetAxis("Horizontal");
+        FlipCharacter(_horizontalInput);
 
         if (_horizontalInput != 0 && IsGrounded())
         {
@@ -103,167 +145,6 @@ public class Player : MonoBehaviour{
         {
             if (_runParticles.isPlaying) _runParticles.Stop();
             _isMoving = false;
-        }
-
-        FlipCharacter(_horizontalInput);
-
-        Jump();
-        _grounded = IsGrounded();
-        if (!_wasGrounded && _grounded)
-        {
-            Land();
-        }
-        _wasGrounded = _grounded;
-        if (Input.GetKeyDown(KeyCode.LeftShift) && _canDash && IsGrounded())
-        {
-            _anim.SetTrigger("Dash");
-            StartCoroutine(Dash());
-        }
-        WalkingSound();
-        isFalling();
-
-    }
-       
-
-   
-
-    private void WalkingSound()
-    {
-        if (_isMoving && IsGrounded())
-        {
-            foreach (var entry in _stepSoundsByLayer)
-            {
-                if (_groundCheck.IsTouchingLayers(entry.Key))
-                {
-                    if (_audioSource.clip != entry.Value)
-                    {
-                        _audioSource.clip = entry.Value;
-                        _audioSource.Play(); // Принудительно запускаем новый звук
-                    }
-                    else if (!_audioSource.isPlaying)
-                    {
-                        _audioSource.Play(); // Запускаем звук, если он по какой-то причине остановился
-                    }
-                    return;
-                }
-            }
-        }
-        else
-        {
-            _audioSource.Stop();
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        if (_isDashing) return;
-        _rb.velocity = new Vector2(_horizontalInput * MoveSpeed, _rb.velocity.y);
-        _anim.SetFloat("xVelocity", Mathf.Abs(_rb.velocity.x));
-        _anim.SetFloat("yVelocity", _rb.velocity.y);
-
-
-        if (_CeilingCheck.IsTouchingLayers(_groundMask))
-        {
-   
-            _isJumping = false;
-            _rb.velocity = new Vector2(_rb.velocity.x, 0);
-        }
-    }
-
-    private void Jump()
-    {
-        LadderMovement ladder = GetComponent<LadderMovement>();
-        bool canJumpFromLadder = ladder != null && ladder.CanJumpFromLadder();
-
-        if ((IsGrounded() || (ladder != null && ladder.CanJumpFromLadder())) && Input.GetKeyDown(KeyCode.Space))
-        {
-            if (canJumpFromLadder)
-            {
-                ladder.ExitLadder();
-            }
-            audioManager.PlaySFX(audioManager.jump);
-            _jumpParticles.Play();
-            _isJumping = true;
-            _jumpTimeCounter = JumpTime;
-            _anim.SetBool("isJumping", true);
-            _anim.SetTrigger("Jump");
-            _rb.velocity = new Vector2(_rb.velocity.x, JumpForce);
-
-       
-            if (!_grounded && _rb.velocity.y > 0 && _groundCheck.IsTouchingLayers(_platformMask))
-            {
-                _jumpedPlatformUp = true; // Игрок прыгнул через платформу вверх
-            }
-
-        }
-
-        if (Input.GetKey(KeyCode.Space) && _isJumping)
-        {
-            if (!_grounded && _rb.velocity.y > 0 && _groundCheck.IsTouchingLayers(_platformMask))
-            {
-                _jumpedPlatformUp = true; // Игрок прыгнул через платформу вверх
-            }
-            if (_jumpTimeCounter > 0)
-            {
-                _rb.velocity = new Vector2(_rb.velocity.x, JumpForce);
-                _jumpTimeCounter -= Time.deltaTime;
-            }
-            else
-            {
-                _isJumping = false;
-            }
-        }
-
-        if (Input.GetKeyUp(KeyCode.Space))
-        {
-            _isJumping = false;
-
-        }
-        if (IsGrounded() && !_isJumping)
-        {
-            _jumpParticles.Stop();
-            _anim.SetBool("isJumping", false);
-        
-        }
-
-    }
-
-   
-
-    private void Land()
-    {
-
-        if (_jumpedPlatformUp)
-        {
-
-            _jumpedPlatformUp = false;
-            return; // Не проигрываем звук приземления
-        }
-
-        _anim.SetTrigger("Land");
-     
-        _jumpParticles.Play(); 
-        audioManager.PlaySFX(audioManager.land);
-
-
-    
-    }
-
-    public bool IsGrounded()
-    {
-        return _groundCheck.IsTouchingLayers(_groundMask)|| _groundCheck.IsTouchingLayers(_platformMask);
-
-    }
-
-    private void FlipCharacter(float input)
-    {
-        if (input > 0.01f)
-        {
-            transform.localScale = Vector3.one;
-        }
-        else if (input < -0.01f)
-        {
-            transform.localScale = new Vector3(-1, 1, 1);
         }
     }
 
@@ -279,7 +160,6 @@ public class Player : MonoBehaviour{
         DisableLight();
         DisableBodyParts();
 
-        //   _rb.velocity = new Vector2(transform.localScale.x * DashingPower, 0f);
         _rb.velocity = Vector2.zero;
         _rb.AddForce(new Vector2(Mathf.Sign(transform.localScale.x) * DashingPower, 0f), ForceMode2D.Impulse);
 
@@ -288,43 +168,143 @@ public class Player : MonoBehaviour{
         _isDashing = false;
         EnableLight();
         EnableBodyParts();
-
-        yield return new WaitForSeconds(_dashingCooldown);
-        _canDash = true;
         _idleCollider.isTrigger = false;
         _dashCollider.enabled = false;
+
+        yield return new WaitForSeconds(_dashingCooldown);
+
+
+        audioManager.PlaySFX(audioManager.dashRecovery);
+        _canDash = true;
+
     }
 
-    private void isFalling()
+    private void Jump()
     {
-        if (!IsGrounded() && _rb.velocity.y < 0) // Если персонаж падает
-        {
-            _anim.SetBool("isFalling", true);
-            
+        bool canJumpFromLadder = ladder != null && ladder.CanJumpFromLadder();
 
-            fallTime += Time.deltaTime; // Считаем, сколько он уже падает
+        if ((IsGrounded() || canJumpFromLadder) && Input.GetKeyDown(KeyCode.Space))
+        {
+            if (canJumpFromLadder)
+            {
+                ladder.ExitLadder();
+            }
+
+            audioManager.PlaySFX(audioManager.jump);
+            _jumpParticles.Play();
+            _isJumping = true;
+            _jumpTimeCounter = JumpTime;
+            _rb.velocity = new Vector2(_rb.velocity.x, JumpForce);
+
+            // Проверяем, прыгает ли игрок сквозь платформу
+            if (_groundCheck.IsTouchingLayers(_platformMask))
+            {
+                _jumpedPlatformUp = true;
+            }
+        }
+
+        if (Input.GetKey(KeyCode.Space) && _isJumping)
+        {
+            if (_jumpTimeCounter > 0)
+            {
+                _rb.velocity = new Vector2(_rb.velocity.x, JumpForce);
+                _jumpTimeCounter -= Time.deltaTime;
+            }
+            else
+            {
+                _isJumping = false;
+            }
+        }
+
+        if (Input.GetKeyUp(KeyCode.Space))
+        {
+            _isJumping = false;
+        }
+
+        // Сброс частицы прыжка, если приземлились
+        if (IsGrounded() && !_isJumping)
+        {
+            _jumpParticles.Stop();
+            _jumpedPlatformUp = false; // Сбрасываем флаг прыжка через платформу при приземлении
+        }
+    }
+
+
+    private void IsFalling()
+    {
+        if (!IsGrounded() && _rb.velocity.y < 0)
+        {
+            fallTime += Time.deltaTime;
 
             if (fallTime >= fallSoundDelay && !isFallingSound)
             {
-
                 audioManager.PlayFall(audioManager.falling);
                 isFallingSound = true;
-
-
             }
         }
         else
         {
-            
             audioManager.StopFallSound();
             fallTime = 0f;
-            isFallingSound = false;
-            _anim.SetBool("isFalling", false);
-        }
-       
-      
             
+        }
+    }
 
+    private void Land()
+    {
+        if (!_wasGrounded && IsGrounded())
+        {
+            if (_jumpedPlatformUp)
+            {
+                _jumpedPlatformUp = false;
+                return;
+            }
+
+            if (isFallingSound)
+            {
+                isFallingSound = false;
+                _anim.SetTrigger("Land");
+                audioManager.PlaySFX(audioManager.hardLand);
+                DisableControls();
+                Invoke(nameof(EnableControls), 0.3f);
+      
+            }
+            else
+            {
+                _anim.SetTrigger("Land");
+                _jumpParticles.Play();
+                audioManager.PlaySFX(audioManager.softLand);
+            }
+         
+
+        }
+    }
+
+    private void StepSounds()
+    {
+        if (_isMoving && IsGrounded())
+        {
+            foreach (var entry in _stepSoundsByLayer)
+            {
+                if (_groundCheck.IsTouchingLayers(entry.Key))
+                {
+                    if (_audioSource.clip != entry.Value)
+                    {
+                        _audioSource.clip = entry.Value;
+                        _audioSource.Play();
+                    }
+                    else if (!_audioSource.isPlaying)
+                    {
+                        _audioSource.Play();
+                    }
+                    return;
+                }
+            }
+        }
+        else
+        {
+            _audioSource.Stop();
+        }
     }
 
     private void DisableLight()
@@ -343,6 +323,19 @@ public class Player : MonoBehaviour{
         }
     }
 
+    public void DisableControls()
+    {
+
+        _rb.velocity = Vector2.zero;
+        isEnabled = false;
+    }
+    public void EnableControls()
+    {
+        isEnabled = true;
+    }
+  
+
+
     private void DisableBodyParts()
     {
         foreach (var part in _bodyParts)
@@ -355,6 +348,8 @@ public class Player : MonoBehaviour{
         }
     }
 
+
+
     private void EnableBodyParts()
     {
         foreach (var part in _bodyParts)
@@ -365,5 +360,47 @@ public class Player : MonoBehaviour{
             if (part.TryGetComponent<SpriteRenderer>(out var sprite))
                 sprite.enabled = true;
         }
+    }
+    private void InitializeStepSounds()
+    {
+
+        _stepSoundsByLayer = new Dictionary<int, AudioClip>();
+        for (int i = 0; i < _stepSoundLayers.Length && i < _stepSounds.Length; i++)
+        {
+            _stepSoundsByLayer[_stepSoundLayers[i].value] = _stepSounds[i];
+        }
+    }
+
+    private void FlipCharacter(float input)
+    {
+        if (input > 0.01f)
+        {
+            transform.localScale = Vector3.one;
+        }
+        else if (input < -0.01f)
+        {
+            transform.localScale = new Vector3(-1, 1, 1);
+        }
+    }
+
+    private void SpeedrunMode()
+    {
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            MoveSpeed = 15f;
+            JumpForce = 14f;
+            DashingPower = 20f;
+        }
+        if (Input.GetKeyDown(KeyCode.G))
+        {
+            MoveSpeed = 6f;
+            JumpForce = 9f;
+            DashingPower = 10f;
+        }
+    }
+    public bool IsGrounded()
+    {
+        return _groundCheck.IsTouchingLayers(_groundMask) || _groundCheck.IsTouchingLayers(_platformMask);
+
     }
 }

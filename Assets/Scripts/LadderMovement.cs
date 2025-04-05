@@ -1,26 +1,29 @@
+using System.Collections;
 using UnityEngine;
 
 public class LadderMovement : MonoBehaviour
 {
-    [SerializeField] private float climbSpeedX = 0.1f;
     [SerializeField] private float climbSpeedY = 8f;
-    private bool isClimbing;
-    private bool onLadder;
-    private Rigidbody2D rb;
-    private float originalGravityScale;
-    AudioManager audioManager;
+    public bool isClimbing;
+    public bool onLadder;
+
+    public  Rigidbody2D rb;
+    public float originalGravityScale;
+    private AudioManager audioManager;
+    private Player player;
 
     [SerializeField] private LayerMask ladderMask;
-    private Player player;
-    private bool isClimbingSoundPlaying = false;
+    [SerializeField] private BoxCollider2D _groundCheck;
+    [SerializeField] private BoxCollider2D _ceilingCheck;
+
+    private bool delay;
 
     private void Start()
     {
-        audioManager = GameObject.FindGameObjectWithTag("Audio")?.GetComponent<AudioManager>();
-
-        rb = GetComponent<Rigidbody2D>();
         player = GameObject.FindGameObjectWithTag("Player")?.GetComponent<Player>();
-        originalGravityScale = rb.gravityScale; // Сохраняем исходную гравитацию
+        audioManager = GameObject.FindGameObjectWithTag("Audio")?.GetComponent<AudioManager>();
+        rb = GetComponent<Rigidbody2D>();
+        originalGravityScale = rb.gravityScale;
     }
 
     private void FixedUpdate()
@@ -29,55 +32,52 @@ public class LadderMovement : MonoBehaviour
         Climbing();
     }
 
-    private void CheckLadder()
+    public void CheckLadder()
     {
-        // Проверяем, касается ли игрок лестницы
-        RaycastHit2D hitInfo = Physics2D.Raycast(transform.position, Vector2.up, 0.5f, ladderMask);
-        onLadder = hitInfo.collider != null;
+        bool touchingLadderBottom = _groundCheck.IsTouchingLayers(ladderMask);
+        bool touchingLadderTop = _ceilingCheck.IsTouchingLayers(ladderMask);
 
-        // Если игрок на лестнице и пытается карабкаться
-        if (onLadder && (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.S)))
+        onLadder = touchingLadderBottom || touchingLadderTop;
+
+        if (onLadder && Input.GetAxisRaw("Vertical") != 0)
         {
             isClimbing = true;
-            // Останавливаем движение по иксам, если игрок на лестнице
-            rb.velocity = new Vector2(0f, rb.velocity.y);
         }
         else if (!onLadder)
         {
             isClimbing = false;
         }
+      
     }
 
     private void Climbing()
     {
-        if (isClimbing && onLadder)
+        if (isClimbing)
         {
-            // Получаем вертикальный ввод
             float verticalInput = Input.GetAxisRaw("Vertical");
+            float horizontalInput = player.IsGrounded() ? Input.GetAxisRaw("Horizontal") : 0f; // Проверка через Player
 
-            // Если игрок на земле, не замедляем скорость по X
-            float horizontalSpeed = player.IsGrounded() ? rb.velocity.x : rb.velocity.x * climbSpeedX;
+            rb.velocity = new Vector2(horizontalInput * climbSpeedY, verticalInput * climbSpeedY);
 
-            // Позволяем двигаться вверх/вниз
-            rb.velocity = new Vector2(horizontalSpeed, verticalInput * climbSpeedY);
-
-            // Запускаем звук лазания, если он не проигрывается
-            if (verticalInput != 0 && !isClimbingSoundPlaying)
+            if (verticalInput != 0 && !delay)
             {
-                audioManager.PlaySFX(audioManager.ladderClimbing);
-                isClimbingSoundPlaying = true; // Помечаем, что звук проигрывается
+                StartCoroutine(ClimbSound());
             }
 
             rb.gravityScale = 0f;
         }
         else
         {
-            // Если игрок не лазает, возвращаем исходное значение гравитации
             rb.gravityScale = originalGravityScale;
-
-            // Останавливаем звук лазания, когда игрок не лазит
-            isClimbingSoundPlaying = false;
         }
+    }
+
+    private IEnumerator ClimbSound()
+    {
+        audioManager.PlaySFX(audioManager.ladderClimbing);
+        delay = true;
+        yield return new WaitForSeconds(0.5f);
+        delay = false;
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -94,6 +94,7 @@ public class LadderMovement : MonoBehaviour
         {
             onLadder = false;
             isClimbing = false;
+            rb.gravityScale = originalGravityScale;
         }
     }
 

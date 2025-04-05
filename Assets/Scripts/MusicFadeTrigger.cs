@@ -1,15 +1,22 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 public class MusicFadeZone : MonoBehaviour
 {
     public AudioManager audioManager;
-    public Transform player; // Посилання на гравця
-    public float fadeDuration = 0.5f; // Час згасання звуку
 
-    private float topY;  // Верхня межа
-    private float bottomY; // Нижня межа
-    private bool isPlayerInside = false;
+
+    public SpriteRenderer spriteRenderer1;
+    public SpriteRenderer spriteRenderer2;
+
+    public Sprite sprite1;
+    public Sprite sprite2;
+
+    public GameObject targetNote;
+    public Light2D[] lightObjects;
+
+    private bool oneTime;
 
     private void Start()
     {
@@ -18,39 +25,33 @@ public class MusicFadeZone : MonoBehaviour
             audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
         }
 
-        // Отримуємо межі BoxCollider2D
-        BoxCollider2D col = GetComponent<BoxCollider2D>();
-        topY = col.bounds.max.y;
-        bottomY = col.bounds.min.y;
+
     }
 
     private void Update()
     {
-        if (isPlayerInside)
+        if (targetNote == null || !targetNote.activeInHierarchy)
         {
-            float playerY = player.position.y;
+            audioManager.musicSource.Stop();
+            //if(!oneTime)
+            //{
+            //    audioManager.PlayAmbient("Ambient2");
+            //    oneTime = true;
+            //}
+            
 
-            // Нормалізуємо значення від 0 (низ) до 1 (верх)
-            float t = Mathf.InverseLerp(bottomY, topY, playerY);
-
-            // Змінюємо гучність музики
-            audioManager.FadeVolume("MusicVolume", t, fadeDuration);
-     
+            spriteRenderer1.sprite = sprite1;
+            spriteRenderer2.sprite = sprite2;
+            foreach (Light2D light in lightObjects)
+            {
+                if (light != null)
+                {
+                    light.enabled = false;
+                }
+            }
         }
+
     }
 
-    private void OnTriggerEnter2D(Collider2D other)
-    {
-     
-            isPlayerInside = true;
-        
-    }
 
-    private void OnTriggerExit2D(Collider2D other)
-    {
-      
-            isPlayerInside = false;
-            audioManager.FadeVolume("MusicVolume", 1f, fadeDuration); // Відновлюємо звук при виході
-        
-    }
 }

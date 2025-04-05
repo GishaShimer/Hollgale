@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.UIElements;
@@ -8,13 +9,14 @@ public class AudioManager : MonoBehaviour
 {
 
     [Header("Audio Source")]
-    [SerializeField] AudioSource musicSource;
+    public AudioSource musicSource;
     [SerializeField] AudioSource SFXSource;
     [SerializeField] AudioSource ambientSource;
     [SerializeField] AudioSource FallSource; 
 
     [Header("Audio Clip")]
-    public AudioClip land;
+    public AudioClip softLand;
+    public AudioClip hardLand;
     public AudioClip jump;
     public AudioClip dash;
     public AudioClip background;
@@ -30,11 +32,37 @@ public class AudioManager : MonoBehaviour
     public AudioClip platformBreak;
     public AudioClip doorOpen;
     public AudioClip ladderClimbing;
+    public AudioClip dashRecovery;
+    public AudioClip typeWriter;
+    
+
+
+    public List<AudioClip> ambientClips; // Список доступных клипов
+
+    private Dictionary<string, AudioClip> clipDictionary; // Словарь для быстрого доступа к клипам
+
+    private void Awake()
+    {
+        // Инициализируем словарь
+        clipDictionary = new Dictionary<string, AudioClip>();
+
+        foreach (AudioClip clip in ambientClips)
+        {
+            if (clip != null)
+            {
+                clipDictionary[clip.name] = clip;
+            }
+        }
+    }
 
     void Start()
     {
-        musicSource.clip = background;
-        musicSource.Play();
+        if(musicSource!=null)
+        {
+            musicSource.clip = background;
+            musicSource.Play();
+        }
+       
 
         ambientSource.clip = wind;
         ambientSource.Play();
@@ -44,7 +72,15 @@ public class AudioManager : MonoBehaviour
     {
         SFXSource.PlayOneShot(clip);
     }
-   
+    public void PlayAmbient(string clipName)
+    {
+        if (clipDictionary.TryGetValue(clipName, out AudioClip clip))
+        {
+            ambientSource.PlayOneShot(clip); // Воспроизводим клип
+        }
+     
+    }
+
 
     public void FadeVolume(string parameter,  float targetVolume, float duration)
     {
@@ -78,4 +114,10 @@ public class AudioManager : MonoBehaviour
     {
         FallSource.Stop();
     }
+    public void SetVolume(string parameter, float targetVolume)
+    {
+        float dB = Mathf.Clamp(Mathf.Log10(Mathf.Max(targetVolume, 0.0001f)) * 20, -80, 0);
+        audioMixer.SetFloat(parameter, dB);
+    }
+
 }

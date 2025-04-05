@@ -89,9 +89,8 @@ public class Note : MonoBehaviour
 
     private void OpenNote()
     {
-        player.enabled = false;
-        Rigidbody2D rb = player.GetComponent<Rigidbody2D>();
-        rb.velocity = Vector2.zero;
+        player.DisableControls();
+      
 
         audioManager.FadeVolume("MusicVolume", 0.4f, 1);
         audioManager.PlaySFX(audioManager.noteOpen);
@@ -109,13 +108,12 @@ public class Note : MonoBehaviour
 
     private void CloseNote()
     {
-     
-        player.enabled = true;
+        player.isEnabled = true;
         audioManager.FadeVolume("MusicVolume", 1f, 1);
         audioManager.PlaySFX(audioManager.noteClose);
         canvas.gameObject.SetActive(false);
 
-    
+      
         Collider2D col = GetComponent<Collider2D>();
         if (col != null)
         {
@@ -124,4 +122,5 @@ public class Note : MonoBehaviour
 
         Destroy(notePrefabRoot);
     }
+
 }
