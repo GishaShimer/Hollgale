@@ -43,7 +43,8 @@ public class AudioManager : MonoBehaviour
 
     private void Awake()
     {
-        // Инициализируем словарь
+        if (background != null)
+            background.LoadAudioData();
         clipDictionary = new Dictionary<string, AudioClip>();
 
         foreach (AudioClip clip in ambientClips)
@@ -57,12 +58,9 @@ public class AudioManager : MonoBehaviour
 
     void Start()
     {
-        if(musicSource!=null)
-        {
-            musicSource.clip = background;
-            musicSource.Play();
-        }
-       
+        musicSource.clip = background;
+        musicSource.Play();
+
 
         ambientSource.clip = wind;
         ambientSource.Play();

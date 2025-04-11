@@ -1,25 +1,20 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Playables;
 
 public class universalAnimTrigger : MonoBehaviour
 {
-    public string nameTrigger;
-    public string animatorName;
-    Animator anim;
-    private bool hasTriggered = false;
-    private void Start()
-    {
-        if(animatorName != null)
-            anim = GameObject.Find(animatorName).GetComponent<Animator>();
-    }
+    public PlayableDirector director;
+ 
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.CompareTag("Player") && !hasTriggered)
+        if (collision.CompareTag("Player"))
         {
-            anim.SetTrigger(nameTrigger);
-            hasTriggered = true;
+            director.Play();
+  
+            gameObject.SetActive(false);
         }
     }
 }
