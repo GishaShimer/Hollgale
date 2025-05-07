@@ -15,7 +15,7 @@ public class Note : MonoBehaviour
     public Player player;
     public Animator anim; // Аниматор на дочернем объекте подсветки
 
-    AudioManager audioManager;
+    SoundManager audioManager;
 
     private bool playerInTrigger = false; // Игрок в триггере
     private int noteState = 0;
@@ -23,7 +23,7 @@ public class Note : MonoBehaviour
 
     private void Start()
     {
-        audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
+        audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<SoundManager>();
         highlightImage.gameObject.SetActive(false);
         canvas.gameObject.SetActive(false);
         txt.gameObject.SetActive(false);
@@ -70,37 +70,48 @@ public class Note : MonoBehaviour
 
     private void Update()
     {
-        if (playerInTrigger && Input.GetMouseButtonDown(0))
+        if (playerInTrigger && Input.GetMouseButtonDown(0) && !delay)
         {
             if (noteState == 0)
             {
                 OpenNote();
+                StartCoroutine(Delay());
             }
             else if (noteState == 1)
             {
+               
                 ShowText();
+                StartCoroutine(Delay());
             }
             else if (noteState == 2)
             {
+               
                 CloseNote();
+     
             }
         }
     }
-
+    bool delay;
+    private IEnumerator Delay()
+    {
+        delay = true;
+        yield return new WaitForSeconds(1f);
+        delay = false;
+    }
     private void OpenNote()
     {
         player.DisableControls();
       
 
         audioManager.FadeVolume("MusicVolume", 0.4f, 1);
-        audioManager.PlaySFX(audioManager.noteOpen);
+        audioManager.PlaySFX(audioManager.noteOpen, 1f);
         canvas.gameObject.SetActive(true);
         noteState = 1;
     }
 
     private void ShowText()
     {
-        audioManager.PlaySFX(audioManager.noteOpen);
+        audioManager.PlaySFX(audioManager.noteOpen, 1f);
         img.color = new Color32(155, 155, 155, 100);
         txt.gameObject.SetActive(true); // Показать текст записки
         noteState = 2;
@@ -110,7 +121,7 @@ public class Note : MonoBehaviour
     {
         player.isEnabled = true;
         audioManager.FadeVolume("MusicVolume", 1f, 1);
-        audioManager.PlaySFX(audioManager.noteClose);
+        audioManager.PlaySFX(audioManager.noteClose, 1f);
         canvas.gameObject.SetActive(false);
 
       

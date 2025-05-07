@@ -10,12 +10,12 @@ public class TypeWriterEffect : MonoBehaviour
     private string fullText;
     private Coroutine typingCoroutine;
     public bool isSound = false;
-    AudioManager audioManager;
+    SoundManager audioManager;
 
     private void Awake()
     {
         textComponent = GetComponent<TMP_Text>();
-        audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
+        audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<SoundManager>();
         fullText = textComponent.text;
         textComponent.text = ""; // Очищаем текст, но НЕ запускаем эффект сразу
     }
@@ -38,7 +38,7 @@ public class TypeWriterEffect : MonoBehaviour
             if (fullText[i] != ' ')
             {
                 if (isSound)
-                    audioManager.PlaySFX(audioManager.typeWriter);
+                    audioManager.PlaySFX(audioManager.typeWriter, 1f);
             }
 
             textComponent.text = fullText.Substring(0, i + 1);

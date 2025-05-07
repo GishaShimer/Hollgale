@@ -9,7 +9,7 @@ public class LadderMovement : MonoBehaviour
 
     public  Rigidbody2D rb;
     public float originalGravityScale;
-    private AudioManager audioManager;
+    private SoundManager audioManager;
     private Player player;
 
     [SerializeField] private LayerMask ladderMask;
@@ -21,7 +21,7 @@ public class LadderMovement : MonoBehaviour
     private void Start()
     {
         player = GameObject.FindGameObjectWithTag("Player")?.GetComponent<Player>();
-        audioManager = GameObject.FindGameObjectWithTag("Audio")?.GetComponent<AudioManager>();
+        audioManager = GameObject.FindGameObjectWithTag("Audio")?.GetComponent<SoundManager>();
         rb = GetComponent<Rigidbody2D>();
         originalGravityScale = rb.gravityScale;
     }
@@ -74,7 +74,7 @@ public class LadderMovement : MonoBehaviour
 
     private IEnumerator ClimbSound()
     {
-        audioManager.PlaySFX(audioManager.ladderClimbing);
+        audioManager.PlaySFX(audioManager.ladderClimbing, 1f);
         delay = true;
         yield return new WaitForSeconds(0.5f);
         delay = false;

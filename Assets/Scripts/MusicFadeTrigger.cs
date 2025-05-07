@@ -4,7 +4,7 @@ using UnityEngine.Rendering.Universal;
 
 public class MusicFadeZone : MonoBehaviour
 {
-    public AudioManager audioManager;
+    public SoundManager audioManager;
 
 
     public SpriteRenderer spriteRenderer1;
@@ -22,7 +22,7 @@ public class MusicFadeZone : MonoBehaviour
     {
         if (audioManager == null)
         {
-            audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
+            audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<SoundManager>();
         }
 
 
@@ -32,14 +32,8 @@ public class MusicFadeZone : MonoBehaviour
     {
         if (targetNote == null || !targetNote.activeInHierarchy)
         {
-            audioManager.musicSource.Stop();
-            //if(!oneTime)
-            //{
-            //    audioManager.PlayAmbient("Ambient2");
-            //    oneTime = true;
-            //}
-            
-
+            audioManager.MusicSource.Stop();
+          
             spriteRenderer1.sprite = sprite1;
             spriteRenderer2.sprite = sprite2;
             foreach (Light2D light in lightObjects)

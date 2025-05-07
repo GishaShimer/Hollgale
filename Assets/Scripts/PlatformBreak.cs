@@ -7,13 +7,13 @@ public class BreakingPlatform : MonoBehaviour
     private Collider2D col;
     private Renderer rend;
 
-    AudioManager audioManager;
+    SoundManager audioManager;
    
 
 
     private void Awake()
     {
-        audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
+        audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<SoundManager>();
         col = GetComponent<Collider2D>();
         rend = GetComponent<Renderer>();
     }
@@ -37,7 +37,7 @@ public class BreakingPlatform : MonoBehaviour
     private IEnumerator BreakAndRespawn()
     {
         yield return new WaitForSeconds(1f);
-        audioManager.PlaySFX(audioManager.platformBreak);
+        audioManager.PlaySFX(audioManager.platformBreak, 1f);
 
         col.enabled = false;
         rend.enabled = false;

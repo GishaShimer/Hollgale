@@ -7,14 +7,21 @@ public class TimelineFader : MonoBehaviour
 {
     private float targetAlpha;
     private float alphaChangeSpeed;
-    private bool isFading;
+    private bool isFading = true;
     private Image image;
-    private void Awake()
+    private void Start()
     {
         image = GetComponent<Image>();
+
+        // Установить полностью видимый цвет
+        Color color = image.color;
+        color.a = 1f;
+        image.color = color;
+
+        // И сразу начать исчезновение
+        ChangeAlpha(0f);
     }
 
-    // Update is called once per frame
     private void Update()
     {
         if (isFading)

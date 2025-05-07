@@ -19,7 +19,8 @@ public class DoorClosed : MonoBehaviour
 
     private Color newColor;
 
-    AudioManager audioManager;
+
+    SoundManager audioManager;
 
     private bool playerInTrigger = false; // Флаг, находится ли игрок в триггере
 
@@ -33,17 +34,14 @@ public class DoorClosed : MonoBehaviour
     private void Start()
     {
         newColor = targetRenderer.color;
-        audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
+        audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<SoundManager>();
         spriteRenderer = GetComponent<SpriteRenderer>();
-       
-
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (!isOpen)
         {
-         
             spriteRenderer.sprite = newSprite;
             playerInTrigger = true;
         }
@@ -52,39 +50,50 @@ public class DoorClosed : MonoBehaviour
     private void OnTriggerExit2D(Collider2D other)
     {
         playerInTrigger = false;
-        
-        popupInstance.SetActive(false);
+
         if (!isOpen)
         {
-            spriteRenderer.sprite = oldSprite;
-          
+            spriteRenderer.sprite = oldSprite; 
         }
     }
 
     private void Update()
     {
-        if (playerInTrigger && Input.GetMouseButtonDown(0))
-        {
-            if (!canOpen)
+        bool oneTime = false;
+            if (playerInTrigger && Input.GetMouseButtonDown(0) && !delay)
             {
-                audioManager.PlaySFX(audioManager.doorClosed);
-                popupInstance.transform.position = transform.position;
+                if (!canOpen)
+                {
+                    audioManager.PlaySFX(audioManager.doorClosed, 1f);
+                    popupInstance.transform.position = transform.position;
+                StartCoroutine(Delay());
                 popupInstance.SetActive(true);
-                StartCoroutine(HideText());
-            }
-            else
-            {
-                audioManager.PlaySFX(audioManager.doorOpen);
-                spriteRenderer.sprite = doorOpen;
-                isOpen = true;
-                notTriggerCollider2D.enabled = false;
+                    StartCoroutine(HideText());
+                }
+                else
+                {
+                if(!oneTime && targetRenderer != null)
+                    audioManager.PlaySFX(audioManager.doorOpen, 1f);
+                oneTime = true;
+                    spriteRenderer.sprite = doorOpen;
+                    isOpen = true;
+                    notTriggerCollider2D.enabled = false;
 
-                StartCoroutine(FadeToAlpha(targetRenderer, 0f));
-            }
+                    StartCoroutine(FadeToAlpha(targetRenderer, 0f));
+                }
+            
         }
     }
 
-    public IEnumerator FadeToAlpha(SpriteRenderer targetRenderer, float targetAlpha)
+    bool delay;
+    private IEnumerator Delay()
+    {
+        delay = true;
+        yield return new WaitForSeconds(1f);
+        delay = false;
+    }
+
+        public IEnumerator FadeToAlpha(SpriteRenderer targetRenderer, float targetAlpha)
     {
         if (targetRenderer == null) yield break; // Проверка на null
 

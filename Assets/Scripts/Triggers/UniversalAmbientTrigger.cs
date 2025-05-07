@@ -4,22 +4,23 @@ using UnityEngine;
 
 public class universalAmbientTrigger : MonoBehaviour
 {
-    public string ambientName;
-    private AudioManager audioManager;
 
+    private SoundManager audioManager;
+    public AudioClip[] audioClips;
+    public int choice;
     private bool hasTriggered = false;
     private void Start()
     {
        
-            audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
+            audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<SoundManager>();
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("Player") && !hasTriggered)
         {
-         
-                audioManager.PlayAmbient(ambientName);
+
+            audioManager.PlayAmbientStatic(audioClips[choice],1f);
                 hasTriggered = true;
             
         }

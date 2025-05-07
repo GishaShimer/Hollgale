@@ -4,6 +4,7 @@ public class ParticleGravityTrigger : MonoBehaviour
 {
     public ParticleSystem[] particleSystems;
     private float[] initialGravities;
+    private int playerCount = 0;
 
     private void Start()
     {
@@ -19,19 +20,39 @@ public class ParticleGravityTrigger : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        foreach (var ps in particleSystems)
+        if (!IsPlayer(other) || particleSystems == null) return;
+
+        playerCount++;
+
+        for (int i = 0; i < particleSystems.Length; i++)
         {
-            var main = ps.main;
+            if (particleSystems[i] == null) continue;
+
+            var main = particleSystems[i].main;
             main.gravityModifier = new ParticleSystem.MinMaxCurve(-0.5f);
         }
     }
 
     private void OnTriggerExit2D(Collider2D other)
     {
-        for (int i = 0; i < particleSystems.Length; i++)
+        if (!IsPlayer(other) || particleSystems == null || initialGravities == null) return;
+
+        playerCount--;
+
+        if (playerCount <= 0)
         {
-            var main = particleSystems[i].main;
-            main.gravityModifier = new ParticleSystem.MinMaxCurve(initialGravities[i]);
+            for (int i = 0; i < particleSystems.Length; i++)
+            {
+                if (particleSystems[i] == null || i >= initialGravities.Length) continue;
+
+                var main = particleSystems[i].main;
+                main.gravityModifier = new ParticleSystem.MinMaxCurve(initialGravities[i]);
+            }
         }
+    }
+
+    private bool IsPlayer(Collider2D other)
+    {
+        return other.gameObject.CompareTag("Player");
     }
 }

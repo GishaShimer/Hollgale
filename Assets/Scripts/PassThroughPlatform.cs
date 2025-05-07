@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Runtime.InteropServices;
 
 public class PlatformDrop : MonoBehaviour
 {
@@ -7,35 +8,33 @@ public class PlatformDrop : MonoBehaviour
     private bool _playerOnPlatform;
     private bool _hasJumpedOff;
 
-    private AudioManager audioManager;
+    private SoundManager audioManager;
     private int playerLayer;
+    Player player;
 
     private void Start()
     {
-        playerLayer = LayerMask.NameToLayer("Player");
-        audioManager = GameObject.FindGameObjectWithTag("Audio")?.GetComponent<AudioManager>();
-
+        audioManager = GameObject.FindGameObjectWithTag("Audio")?.GetComponent<SoundManager>();
+        player = GameObject.FindGameObjectWithTag("Player")?.GetComponent<Player>();
         _collider = GetComponent<Collider2D>();
     }
-
     private void Update()
     {
-        if (_playerOnPlatform && Input.GetAxisRaw("Vertical") < 0 && !_hasJumpedOff)
+        if (_playerOnPlatform && Input.GetKeyDown(KeyCode.S) &&!_hasJumpedOff)
         {
-            _hasJumpedOff = true; // Блокируем повторное воспроизведение
-            audioManager?.PlaySFX(audioManager.jumpingOff);
-
             _collider.enabled = false;
+            _hasJumpedOff = true;
+
+            audioManager?.PlaySFX(audioManager.jumpingOff, 1f);
+            
             StartCoroutine(EnableCollider());
         }
-
-        // Добавляем дополнительную проверку: если игрок не касается платформы, сбрасываем флаг
         if (!_collider.enabled)
         {
             _playerOnPlatform = false;
         }
     }
-
+ 
     private IEnumerator EnableCollider()
     {
         yield return new WaitForSeconds(0.5f);
@@ -52,20 +51,21 @@ public class PlatformDrop : MonoBehaviour
         }
     }
 
-    private void OnCollisionEnter2D(Collision2D other)
+    private void OnCollisionStay2D(Collision2D other)
     {
-        if (other.gameObject.layer == playerLayer)
+        if (other.gameObject.CompareTag("Player") && player.IsPlatform())
         {
             SetPlayerOnPlatform(other, true);
         }
     }
 
     private void OnCollisionExit2D(Collision2D other)
-    {
-        if (other.gameObject.layer == playerLayer)
+    {   
+        if (other.gameObject.CompareTag("Player"))
         {
             SetPlayerOnPlatform(other, false);
 
         }
     }
+
 }

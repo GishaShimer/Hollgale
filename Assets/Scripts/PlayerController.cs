@@ -3,15 +3,16 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.UIElements;
 using static UnityEngine.EventSystems.EventTrigger;
 
 public class Player : MonoBehaviour
 {
     /////////////////////////////////////////////////////////
     // Компоненты
-    private Rigidbody2D _rb;
+    [HideInInspector]public Rigidbody2D _rb;
     private Animator _anim;
-    private AudioManager audioManager;
+    private SoundManager audioManager;
     private LadderMovement ladder;
 
     [SerializeField] private AudioSource _audioSource;
@@ -23,7 +24,7 @@ public class Player : MonoBehaviour
 
     // Коллизии и физика
     [Header("-----------Физика и коллизии-----------")]
-    [SerializeField] private BoxCollider2D _groundCheck;
+    [HideInInspector] public BoxCollider2D _groundCheck;
     [SerializeField] private BoxCollider2D _CeilingCheck;
     [SerializeField] private Collider2D _idleCollider;
     [SerializeField] private Collider2D _dashCollider;
@@ -61,7 +62,7 @@ public class Player : MonoBehaviour
     public float DashingPower = 12f;
     public float DashingTime = 0.1f;
     private bool _canDash = true;
-    private bool _isDashing;
+    [HideInInspector]public bool _isDashing;
     private float _dashingCooldown = 1f;
 
     // Падение
@@ -79,12 +80,15 @@ public class Player : MonoBehaviour
 
     private void Awake()
     {
-       
-        _rb = GetComponent<Rigidbody2D>();
+
+            _rb = GetComponent<Rigidbody2D>();
         _anim = GetComponent<Animator>();
-        _audioSource = GetComponent<AudioSource>();
-        ladder = GetComponent<LadderMovement>();
-        audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
+
+            _audioSource = GetComponent<AudioSource>();
+ 
+            ladder = GetComponent<LadderMovement>();
+ 
+            audioManager = GameObject.FindGameObjectWithTag("Audio").GetComponent<SoundManager>();
 
         InitializeStepSounds();
         _dashCollider.enabled = false;
@@ -104,11 +108,7 @@ public class Player : MonoBehaviour
         Land();
 
         _wasGrounded = IsGrounded();
-        if (Input.GetKeyDown(KeyCode.LeftShift) && _canDash && IsGrounded())
-        {
-            _anim.SetTrigger("Dash");
-            StartCoroutine(Dash());
-        }
+        Dashing();
         _anim.SetBool("isGrounded", IsGrounded());
 
     }
@@ -147,10 +147,18 @@ public class Player : MonoBehaviour
             _isMoving = false;
         }
     }
+    private void Dashing()
+    {
+        if (Input.GetKeyDown(KeyCode.LeftShift) && _canDash && IsGrounded())
+        {
+            _anim.SetTrigger("Dash");
+            StartCoroutine(Dash());
+        }
+    }
 
     private IEnumerator Dash()
     {
-        audioManager.PlaySFX(audioManager.dash);
+        audioManager.PlaySFX(audioManager.dash, 1f);
         _canDash = false;
         _isDashing = true;
 
@@ -166,17 +174,24 @@ public class Player : MonoBehaviour
         yield return new WaitForSeconds(DashingTime);
 
         _isDashing = false;
+
+        yield return new WaitWhile(() =>
+     Physics2D.OverlapBox(
+         _CeilingCheck.bounds.center,
+         _CeilingCheck.bounds.size,
+         0f,
+         _groundMask
+     ) != null
+ );
         EnableLight();
         EnableBodyParts();
+
         _idleCollider.isTrigger = false;
         _dashCollider.enabled = false;
 
         yield return new WaitForSeconds(_dashingCooldown);
-
-
-        audioManager.PlaySFX(audioManager.dashRecovery);
+        audioManager.PlaySFX(audioManager.dashRecovery, 1f);
         _canDash = true;
-
     }
 
     private void Jump()
@@ -190,7 +205,7 @@ public class Player : MonoBehaviour
                 ladder.ExitLadder();
             }
 
-            audioManager.PlaySFX(audioManager.jump);
+            audioManager.PlaySFX(audioManager.jump, 1f);
             _jumpParticles.Play();
             _isJumping = true;
             _jumpTimeCounter = JumpTime;
@@ -238,13 +253,13 @@ public class Player : MonoBehaviour
 
             if (fallTime >= fallSoundDelay && !isFallingSound)
             {
-                audioManager.PlayFall(audioManager.falling);
+                audioManager.PlayAmbient(audioManager.falling, 1f);
                 isFallingSound = true;
             }
         }
         else
         {
-            audioManager.StopFallSound();
+            audioManager.AmbientSource.Stop();
             fallTime = 0f;
             
         }
@@ -264,7 +279,7 @@ public class Player : MonoBehaviour
             {
                 isFallingSound = false;
                 _anim.SetTrigger("Land");
-                audioManager.PlaySFX(audioManager.hardLand);
+                audioManager.PlaySFX(audioManager.hardLand, 1f);
                 DisableControls();
                 Invoke(nameof(EnableControls), 0.3f);
       
@@ -273,7 +288,7 @@ public class Player : MonoBehaviour
             {
                 _anim.SetTrigger("Land");
                 _jumpParticles.Play();
-                audioManager.PlaySFX(audioManager.softLand);
+                audioManager.PlaySFX(audioManager.softLand, 1f);
             }
          
 
@@ -336,7 +351,7 @@ public class Player : MonoBehaviour
   
 
 
-    private void DisableBodyParts()
+    public void DisableBodyParts()
     {
         foreach (var part in _bodyParts)
         {
@@ -350,7 +365,7 @@ public class Player : MonoBehaviour
 
 
 
-    private void EnableBodyParts()
+    public void EnableBodyParts()
     {
         foreach (var part in _bodyParts)
         {
@@ -403,4 +418,11 @@ public class Player : MonoBehaviour
         return _groundCheck.IsTouchingLayers(_groundMask) || _groundCheck.IsTouchingLayers(_platformMask);
 
     }
+    public bool IsPlatform()
+    {
+        return !_groundCheck.IsTouchingLayers(_groundMask) && _groundCheck.IsTouchingLayers(_platformMask);
+
+    }
+
+
 }

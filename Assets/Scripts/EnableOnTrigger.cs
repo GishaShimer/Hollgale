@@ -4,82 +4,52 @@ using UnityEngine;
 
 public class EnableOnTrigger : MonoBehaviour
 {
-    public bool once;
     private TMP_Text textComponent;
     private Color newColor;
     private Coroutine fadeCoroutine;
     private TypeWriterEffect typeEffect;
-    private bool isFading;
-    private int playerCollidersInside = 0; // Количество входящих коллайдеров
-
+    private bool flag = false;
+    Player player;
     private void Start()
     {
         textComponent = GetComponent<TMP_Text>();
         typeEffect = GetComponent<TypeWriterEffect>();
 
         newColor = textComponent.color;
-        textComponent.enabled = false; // Изначально скрываем текст
+        textComponent.enabled = false;
+     
+        player = GameObject.FindGameObjectWithTag("Player").GetComponent<Player>();
+        
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!IsPlayer(other)) return;
+        if (!IsPlayer(other) || flag) return;
 
-        playerCollidersInside++; // Увеличиваем счетчик входов
-
-        if (playerCollidersInside == 1) // Только если это первый вход
-        {
-            if (fadeCoroutine != null)
-            {
-                StopCoroutine(fadeCoroutine);
-            }
-
-            isFading = false;
             textComponent.enabled = true;
-
-            if (typeEffect != null)
-            {
                 typeEffect.StartTypeWriter();
-            }
-
             fadeCoroutine = StartCoroutine(FadeToAlpha(1f));
-        }
+        
     }
 
     private void OnTriggerExit2D(Collider2D other)
     {
-        if (!IsPlayer(other)) return;
+        if (!IsPlayer(other) || flag) return;
+        if (!gameObject.activeInHierarchy || this == null) return;
 
-        playerCollidersInside--; // Уменьшаем счетчик выходов
-
-        if (playerCollidersInside <= 0) // Только если ВСЕ коллайдеры вышли
-        {
-            if (fadeCoroutine != null)
-            {
-                StopCoroutine(fadeCoroutine);
-            }
-
-            isFading = true;
+        flag = true;
             fadeCoroutine = StartCoroutine(FadeOutAndDisable());
-        }
     }
 
     private IEnumerator FadeOutAndDisable()
     {
         yield return StartCoroutine(FadeToAlpha(0f));
 
-        if (!isFading) yield break;
-
-        isFading = false;
-
-        if (once)
-        {
-            gameObject.SetActive(false);
-        }
-        else
-        {
-            textComponent.enabled = false;
-        }
+        
+        gameObject.SetActive(false);
+       
+           
+        
     }
 
     private IEnumerator FadeToAlpha(float targetAlpha)
@@ -104,8 +74,9 @@ public class EnableOnTrigger : MonoBehaviour
         textComponent.color = newColor;
     }
 
+
     private bool IsPlayer(Collider2D other)
     {
-        return other.gameObject.CompareTag("Player");
+        return (other.gameObject.CompareTag("Player") && !player._isDashing);
     }
 }

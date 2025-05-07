@@ -7,12 +7,11 @@ using UnityEngine.UIElements;
 
 public class AudioManager : MonoBehaviour
 {
-
     [Header("Audio Source")]
     public AudioSource musicSource;
     [SerializeField] AudioSource SFXSource;
-    [SerializeField] AudioSource ambientSource;
-    [SerializeField] AudioSource FallSource; 
+    public AudioSource ambientSource;
+
 
     [Header("Audio Clip")]
     public AudioClip softLand;
@@ -34,17 +33,27 @@ public class AudioManager : MonoBehaviour
     public AudioClip ladderClimbing;
     public AudioClip dashRecovery;
     public AudioClip typeWriter;
-    
+    public AudioClip mainMenuMusic;
+    public AudioClip buttonClick;
+    public AudioClip mouseButtonEnter;
+    public AudioClip start;
 
-
-    public List<AudioClip> ambientClips; // Список доступных клипов
-
-    private Dictionary<string, AudioClip> clipDictionary; // Словарь для быстрого доступа к клипам
+    public List<AudioClip> ambientClips;
+    private Dictionary<string, AudioClip> clipDictionary; 
 
     private void Awake()
     {
-        if (background != null)
-            background.LoadAudioData();
+        //if (instance == null)
+        //{
+        //    instance = this;
+        //    DontDestroyOnLoad(gameObject);
+        //}
+        //else if (instance != this)
+        //{
+        //    Destroy(gameObject); // Удаляем дубликат, если он появился при запуске другой сцены
+        //}
+        //if (background != null)
+        //    background.LoadAudioData();
         clipDictionary = new Dictionary<string, AudioClip>();
 
         foreach (AudioClip clip in ambientClips)
@@ -56,29 +65,39 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    void Start()
+    public void PlayMusic(AudioClip clip)
     {
-        musicSource.clip = background;
+        musicSource.clip = clip;
+        musicSource.loop = true;
         musicSource.Play();
-
-
-        ambientSource.clip = wind;
-        ambientSource.Play();
     }
-
     public void PlaySFX(AudioClip clip)
     {
         SFXSource.PlayOneShot(clip);
     }
-    public void PlayAmbient(string clipName)
+
+    public void PlayAmbientSound(AudioClip clip)
+    {
+        ambientSource.clip = clip;
+        ambientSource.loop = true;
+        ambientSource.Play();
+    }
+
+    public void PlayTriggerZones(string clipName)
     {
         if (clipDictionary.TryGetValue(clipName, out AudioClip clip))
         {
-            ambientSource.PlayOneShot(clip); // Воспроизводим клип
+            ambientSource.PlayOneShot(clip); 
         }
-     
     }
-
+    public void HandleFadeVolume()
+    {
+        StartCoroutine(FadeVolumeCoroutine("MusicVolume", 0f, 1.7f));
+    }
+    public void HandleFadeWind()
+    {
+        StartCoroutine(FadeVolumeCoroutine("AmbientVolume", 0f, 1.7f));
+    }
 
     public void FadeVolume(string parameter,  float targetVolume, float duration)
     {
@@ -101,21 +120,31 @@ public class AudioManager : MonoBehaviour
 
         audioMixer.SetFloat(parameter, Mathf.Lerp(-80, 0, targetVolume));
     }
-
-
-    public void PlayFall(AudioClip clip)
+    public void SetMasterVolume(float value)
     {
-        FallSource.clip = clip;
-        FallSource.Play();
+        SetVolumeFromSlider("MasterVolume", value);
     }
-    public void StopFallSound()
+    public void SetMusicVolume(float value)
     {
-        FallSource.Stop();
+        SetVolumeFromSlider("MusicVolume", value);
     }
-    public void SetVolume(string parameter, float targetVolume)
+    public void SetSFXVolume(float value)
     {
-        float dB = Mathf.Clamp(Mathf.Log10(Mathf.Max(targetVolume, 0.0001f)) * 20, -80, 0);
+        SetVolumeFromSlider("SFXVolume", value);
+    }
+    public void SetAmbientVolume(float value)
+    {
+        SetVolumeFromSlider("AmbientVolume", value);
+    }
+   
+
+    public void SetVolumeFromSlider(string parameter, float sliderValue)
+    {
+        sliderValue = Mathf.Clamp(sliderValue, 0.001f, 1f);
+
+        float dB = Mathf.Log10(sliderValue) * 20f;
         audioMixer.SetFloat(parameter, dB);
-    }
 
+        PlayerPrefs.SetFloat(parameter, sliderValue); // сохранить
+    }
 }
